@@ -2067,6 +2067,7 @@ bool Generic_GCC::IsIntegratedAssemblerDefault() const {
          getTriple().getArch() == llvm::Triple::armeb ||
          getTriple().getArch() == llvm::Triple::thumb ||
          getTriple().getArch() == llvm::Triple::thumbeb ||
+         getTriple().getArch() == llvm::Triple::mipsel ||
          getTriple().getArch() == llvm::Triple::ppc ||
          getTriple().getArch() == llvm::Triple::ppc64 ||
          getTriple().getArch() == llvm::Triple::ppc64le ||

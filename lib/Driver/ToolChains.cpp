@@ -1324,7 +1324,7 @@ bool Generic_GCC::GCCInstallationDetector::getBiarchSibling(Multilib &M) const {
                                              "mips-mti-linux-gnu",
                                              "mips-img-linux-gnu" };
   static const char *const MIPSELLibDirs[] = { "/lib" };
-  static const char *const MIPSELTriples[] = { "mipsel-linux-gnu",
+  static const char *const MIPSELTriples[] = { "mipsel-unknown-linux-gnu",
                                                "mipsel-linux-android",
                                                "mips-img-linux-gnu" };
 
@@ -2917,6 +2917,17 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
   Multilibs = GCCInstallation.getMultilibs();
   llvm::Triple::ArchType Arch = Triple.getArch();
   std::string SysRoot = computeSysRoot();
+  const bool IsMips = isMipsArch(Arch);
+
+  // OpenISA sysroot
+  if (IsMips) {
+    if (SysRoot.empty()) {
+      ExtraOpts.push_back("-isysroot" + D.InstalledDir + "/../oi-elf");
+      SysRoot = D.InstalledDir + "/../oi-elf";
+    }
+    // Make OpenISA static by default
+    ExtraOpts.push_back("-static");
+  }
 
   // Cross-compiling binutils and GCC installations (vanilla and openSUSE at
   // least) put various tools in a triple-prefixed directory off of the parent
@@ -2943,10 +2954,6 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
     ExtraOpts.push_back("-X");
 
   const bool IsAndroid = Triple.getEnvironment() == llvm::Triple::Android;
-  const bool IsMips = isMipsArch(Arch);
-
-  if (IsMips && !SysRoot.empty())
-    ExtraOpts.push_back("--sysroot=" + SysRoot);
 
   // Do not use 'gnu' hash style for Mips targets because .gnu.hash
   // and the MIPS ABI require .dynsym to be sorted in different ways.

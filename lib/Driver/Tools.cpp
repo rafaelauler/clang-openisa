@@ -7424,8 +7424,14 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
   // handled somewhere else.
   Args.ClaimAllArgs(options::OPT_w);
 
-  if (!D.SysRoot.empty())
+  if (!D.SysRoot.empty() && !ToolChain.getArch() == llvm::Triple::mipsel)
     CmdArgs.push_back(Args.MakeArgString("--sysroot=" + D.SysRoot));
+
+  // Adding OpenISA linker flags
+  if (ToolChain.getArch() == llvm::Triple::mipsel) {
+    CmdArgs.push_back(Args.MakeArgString("-T" + D.InstalledDir +
+                                         "/../oi-elf/lib/ac_link.ld"));
+  }
 
   if (IsPIE)
     CmdArgs.push_back("-pie");
@@ -7443,8 +7449,11 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back("--eh-frame-hdr");
   }
 
-  CmdArgs.push_back("-m");
-  CmdArgs.push_back(getLDMOption(ToolChain.getTriple(), Args));
+  // Don't do emulation for the openisa linker
+  if (ToolChain.getArch() != llvm::Triple::mipsel) {
+    CmdArgs.push_back("-m");
+    CmdArgs.push_back(getLDMOption(ToolChain.getTriple(), Args));
+  }
 
   if (Args.hasArg(options::OPT_static)) {
     if (ToolChain.getArch() == llvm::Triple::arm ||
@@ -7458,12 +7467,14 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back("-shared");
   }
 
+  // Dynamic linker is disabled for openisa for now
   if (ToolChain.getArch() == llvm::Triple::arm ||
       ToolChain.getArch() == llvm::Triple::armeb ||
       ToolChain.getArch() == llvm::Triple::thumb ||
       ToolChain.getArch() == llvm::Triple::thumbeb ||
       (!Args.hasArg(options::OPT_static) &&
-       !Args.hasArg(options::OPT_shared))) {
+       !Args.hasArg(options::OPT_shared) &&
+       ToolChain.getArch() != llvm::Triple::mipsel)) {
     CmdArgs.push_back("-dynamic-linker");
     CmdArgs.push_back(Args.MakeArgString(
         D.DyldPrefix + getLinuxDynamicLinker(Args, ToolChain)));
@@ -7472,8 +7483,10 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
   CmdArgs.push_back("-o");
   CmdArgs.push_back(Output.getFilename());
 
+  // Ignore stdlib inclusions for the OpenISA linker
   if (!Args.hasArg(options::OPT_nostdlib) &&
-      !Args.hasArg(options::OPT_nostartfiles)) {
+      !Args.hasArg(options::OPT_nostartfiles) &&
+      ToolChain.getArch() != llvm::Triple::mipsel) {
     if (!isAndroid) {
       const char *crt1 = nullptr;
       if (!Args.hasArg(options::OPT_shared)){
@@ -7521,10 +7534,20 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
   bool NeedsSanitizerDeps = addSanitizerRuntimes(ToolChain, Args, CmdArgs);
   AddLinkerInputs(ToolChain, Inputs, Args, CmdArgs);
+
+  if (ToolChain.getArch() == llvm::Triple::mipsel) {
+    CmdArgs.push_back("--start-group");
+    CmdArgs.push_back("-lc");
+    CmdArgs.push_back("-lnosys");
+    CmdArgs.push_back("--end-group");
+  }
+
   // The profile runtime also needs access to system libraries.
   addProfileRT(getToolChain(), Args, CmdArgs);
 
+  // Disable C++ linking for openisa for now
   if (D.CCCIsCXX() &&
+      ToolChain.getArch() != llvm::Triple::mipsel &&
       !Args.hasArg(options::OPT_nostdlib) &&
       !Args.hasArg(options::OPT_nodefaultlibs)) {
     bool OnlyLibstdcxxStatic = Args.hasArg(options::OPT_static_libstdcxx) &&
@@ -7537,7 +7560,9 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back("-lm");
   }
 
-  if (!Args.hasArg(options::OPT_nostdlib)) {
+  // Using OpenISA is equivalent to using "no stdlib" because we rely on newlib
+  if (ToolChain.getArch() != llvm::Triple::mipsel &&
+      !Args.hasArg(options::OPT_nostdlib)) {
     if (!Args.hasArg(options::OPT_nodefaultlibs)) {
       if (Args.hasArg(options::OPT_static))
         CmdArgs.push_back("--start-group");

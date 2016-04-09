@@ -2067,7 +2067,6 @@ bool Generic_GCC::IsIntegratedAssemblerDefault() const {
          getTriple().getArch() == llvm::Triple::armeb ||
          getTriple().getArch() == llvm::Triple::thumb ||
          getTriple().getArch() == llvm::Triple::thumbeb ||
-         getTriple().getArch() == llvm::Triple::mipsel ||
          getTriple().getArch() == llvm::Triple::ppc ||
          getTriple().getArch() == llvm::Triple::ppc64 ||
          getTriple().getArch() == llvm::Triple::ppc64le ||
@@ -3112,6 +3111,9 @@ Tool *Linux::buildLinker() const {
 }
 
 Tool *Linux::buildAssembler() const {
+  if (isMipsArch(getTriple().getArch())) {
+    return new tools::gnutools::LLVMAssemble(*this);
+  }
   return new tools::gnutools::Assemble(*this);
 }
 

@@ -474,6 +474,18 @@ namespace gnutools {
                       const llvm::opt::ArgList &TCArgs,
                       const char *LinkingOutput) const override;
   };
+  class LLVM_LIBRARY_VISIBILITY LLVMAssemble : public GnuTool  {
+  public:
+    LLVMAssemble(const ToolChain &TC) : GnuTool("LLVM::Assemble", "assembler", TC) {}
+
+    bool hasIntegratedCPP() const override { return false; }
+
+    void ConstructJob(Compilation &C, const JobAction &JA,
+                      const InputInfo &Output,
+                      const InputInfoList &Inputs,
+                      const llvm::opt::ArgList &TCArgs,
+                      const char *LinkingOutput) const override;
+  };
   class LLVM_LIBRARY_VISIBILITY Link : public GnuTool  {
   public:
     Link(const ToolChain &TC) : GnuTool("GNU::Link", "linker", TC) {}

@@ -2090,6 +2090,15 @@ void Generic_ELF::addClangTargetOptions(const ArgList &DriverArgs,
                          options::OPT_fno_use_init_array,
                          UseInitArrayDefault))
     CC1Args.push_back("-fuse-init-array");
+
+  if (getTriple().getArch() == llvm::Triple::mipsel) {
+    if (!DriverArgs.hasArg(options::OPT_isysroot) &&
+        !DriverArgs.hasArg(options::OPT__sysroot_EQ)) {
+      CC1Args.push_back("-isysroot");
+      CC1Args.push_back(
+          DriverArgs.MakeArgString(getDriver().InstalledDir + "/../oi-elf"));
+    }
+  }
 }
 
 /// Hexagon Toolchain
@@ -2922,7 +2931,6 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
   // OpenISA sysroot
   if (IsMips) {
     if (SysRoot.empty()) {
-      ExtraOpts.push_back("-isysroot" + D.InstalledDir + "/../oi-elf");
       SysRoot = D.InstalledDir + "/../oi-elf";
     }
     // Make OpenISA static by default
@@ -3111,6 +3119,10 @@ std::string Linux::computeSysRoot() const {
   if (!getDriver().SysRoot.empty())
     return getDriver().SysRoot;
 
+  if (isMipsArch(getTriple().getArch())) {
+    return getDriver().InstalledDir + "/../oi-elf";
+  }
+
   if (!GCCInstallation.isValid() || !isMipsArch(getTriple().getArch()))
     return std::string();
 
@@ -3129,6 +3141,11 @@ std::string Linux::computeSysRoot() const {
     return Path;
 
   Path = (InstallDir + "/../../../../sysroot" + Multilib.osSuffix()).str();
+
+  if (llvm::sys::fs::exists(Path))
+    return Path;
+
+  Path = (InstallDir + "/../oi-elf").str();
 
   if (llvm::sys::fs::exists(Path))
     return Path;

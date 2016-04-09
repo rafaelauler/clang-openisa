@@ -7424,7 +7424,7 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
   // handled somewhere else.
   Args.ClaimAllArgs(options::OPT_w);
 
-  if (!D.SysRoot.empty() && !ToolChain.getArch() == llvm::Triple::mipsel)
+  if (!D.SysRoot.empty() && ToolChain.getArch() != llvm::Triple::mipsel)
     CmdArgs.push_back(Args.MakeArgString("--sysroot=" + D.SysRoot));
 
   // Adding OpenISA linker flags
